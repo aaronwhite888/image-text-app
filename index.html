@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片+文字下载</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    button { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    #content { margin: 20px 0; }
+    img { max-width: 300px; height: auto; }
+  </style>
+</head>
+<body>
+  <h1>点击下载图片+文字</h1>
+  <div id="content">
+    <!-- 动态加载内容 -->
+  </div>
+  <button id="downloadBtn">复制文字并下载图片</button>
+
+  <script>
+    // 初始化 Supabase
+    const supabaseUrl = 'https://mgqjiujsnnnortbmszhr.supabase.co';  // 替换成你的 Supabase URL
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ncWppdWpzbm5ub3J0Ym1zemhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjE4NDIsImV4cCI6MjA2MjUzNzg0Mn0.W6x3KenQtwEVKnVoJjG06ZkpKF_67bOBPujBHyRdR3g';  // 替换成你的 Supabase Anon Key
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // 获取未使用的内容
+    async function loadContent() {
+      const { data, error } = await supabase
+        .from('content')
+        .select('*')
+        .eq('is_used', false)
+        .limit(1);
+
+      if (error || !data.length) {
+        document.getElementById('content').innerHTML = '<p>没有可用内容了！</p>';
+        document.getElementById('downloadBtn').disabled = true;
+        return;
+      }
+
+      const item = data[0];
+      document.getElementById('content').innerHTML = `
+        <img src="${item.image_url}" alt="图片">
+        <p>${item.text}</p>
+      `;
+
+      // 存储当前内容 ID，用于后续标记
+      window.currentItemId = item.id;
+    }
+
+    // 下载图片 + 复制文字
+    async function downloadContent() {
+      if (!window.currentItemId) return;
+
+      // 1. 标记为已使用
+      await supabase
+        .from('content')
+        .update({ is_used: true })
+        .eq('id', window.currentItemId);
+
+      // 2. 复制文字
+      const text = document.querySelector('#content p').textContent;
+      navigator.clipboard.writeText(text)
+        .then(() => alert('文字已复制到剪贴板！'))
+        .catch(() => alert('复制失败，请手动复制！'));
+
+      // 3. 下载图片（模拟点击下载）
+      const imgUrl = document.querySelector('#content img').src;
+      const a = document.createElement('a');
+      a.href = imgUrl;
+      a.download = `image_${window.currentItemId}.jpg`;
+      a.click();
+
+      // 4. 重新加载新内容
+      loadContent();
+    }
+
+    // 初始化
+    document.getElementById('downloadBtn').addEventListener('click', downloadContent);
+    loadContent();
+  </script>
+</body>
+</html>
